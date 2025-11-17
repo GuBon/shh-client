@@ -1,0 +1,29 @@
+{
+  "name": "shh-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:mock": "VITE_USE_MOCK_DATA=true vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "echo 'ESLint not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "axios": "^1.7.4",
+    "echarts": "^5.5.0",
+    "pinia": "^2",
+    "vue": "^3.5.22",
+    "vue-router": "^4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.11",
+    "vite-plugin-vue-devtools": "^8.0.3"
+  }
+}
