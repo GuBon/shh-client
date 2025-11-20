@@ -86,11 +86,11 @@
     <div class="commerce-info">
       <div class="info-content">
         <span class="info-item">
-          현재 상권 : <strong class="info-value">서울 시청</strong>
+          현재 상권 : <strong class="info-value">독립문역 1번</strong>
         </span>
         <span class="info-divider">|</span>
         <span class="info-item">
-          추천 업종 : <strong class="info-value">음식점, 소매업</strong>
+          추천 업종 : <strong class="info-value">치킨집 한식음식점 편의점</strong>
         </span>
         <span class="info-divider">|</span>
         <span class="info-item">
@@ -412,7 +412,7 @@ onUnmounted(() => {
 }
 .main-nav {
   display: flex;
-  gap: 24px;
+  gap: 10px;
   align-items: center;
   margin-left: auto; /* 우측 정렬 */
 }

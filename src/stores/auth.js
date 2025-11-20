@@ -9,9 +9,9 @@ export const useAuthStore = defineStore('auth', () => {
   // 임시 내 가게 정보 (추후 실제 API에서 가져올 데이터)
   const myStore = ref({
     id: 'store_001',
-    name: '구본경의 카페',
-    latitude: 37.5636,  // 명동 근처
-    longitude: 126.9834,
+    name: '영천생고기',
+    latitude: 37.57574724,
+    longitude: 126.9572089,
     address: '서울특별시 중구 명동길 26',
     phone: '02-1234-5678'
   })

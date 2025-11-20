@@ -3,7 +3,7 @@
     <div class="signup-container">
       <!-- 로고 -->
       <div class="logo-section">
-        <h1 class="logo">소확행</h1>
+        <img src="/images/logo.png" alt="소확행" class="logo" />
         <h2 class="page-title">회원가입</h2>
       </div>
 
@@ -85,6 +85,28 @@
               <div class="store-address">{{ selectedStore.road_address_name || selectedStore.address_name }}</div>
             </div>
             <button type="button" @click="clearSelectedStore" class="change-btn">변경</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">업종 선택</label>
+
+          <select
+              v-model="signupForm.industryCode"
+              class="form-input"
+              required
+          >
+            <option value="" disabled>업종을 선택하세요</option>
+            <option
+                v-for="industry in industryList"
+                :key="industry"
+                :value="industry"
+            >
+              {{ industry }}
+            </option>
+          </select>
+
+          <div v-if="!signupForm.industryCode" class="error-message">
+            업종을 선택해야 합니다.
           </div>
         </div>
 
@@ -201,7 +223,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import kakaoPlacesService from '@/services/kakaoPlaces'
@@ -213,12 +235,69 @@ export default {
     const router = useRouter()
     const authStore = useAuthStore()
 
+    // ✅ CSV 기반 업종 리스트 (일부만 예시, 나머지는 CSV에서 그대로 추가)
+    const industryList = ref([
+          "PC방",
+          "가구",
+          "가방",
+          "가전제품",
+          "가전제품수리",
+          "골프연습장",
+          "네일숍",
+          "노래방",
+          "당구장",
+          "문구",
+          "미곡판매",
+          "미용실",
+          "반찬가게",
+          "부동산중개업",
+          "분식전문점",
+          "서적",
+          "슈퍼마켓",
+          "스포츠클럽",
+          "스포츠용품판매",
+          "식료품",
+          "안경점",
+          "애견용품",
+          "약국",
+          "여관",
+          "옷가게",
+          "운동용품",
+          "의료기기",
+          "의류수선",
+          "의원",
+          "자동차수리",
+          "정육점",
+          "제과점",
+          "주유소",
+          "주차장",
+          "중고품판매",
+          "중식음식점",
+          "철물점",
+          "청과상",
+          "치과의원",
+          "치킨전문점",
+          "커피-음료",
+          "컴퓨터및주변장치판매",
+          "패스트푸드점",
+          "편의점",
+          "피부관리실",
+          "한식음식점",
+          "한의원",
+          "핸드폰",
+          "호프-간이주점",
+          "화장품",
+          "화초"
+        ]
+    )
+
     // 폼 데이터
     const signupForm = ref({
       userId: '',
       password: '',
       name: '',
-      businessNumber: ''
+      businessNumber: '',
+      industryCode: ''
     })
 
     // 검증 상태
@@ -251,14 +330,16 @@ export default {
 
     const canSignup = computed(() => {
       return signupForm.value.userId &&
-             userIdChecked.value &&
-             !userIdError.value &&
-             signupForm.value.password &&
-             !passwordError.value &&
-             signupForm.value.name &&
-             !nameError.value &&
-             selectedStore.value &&
-             businessVerified.value
+          userIdChecked.value &&
+          !userIdError.value &&
+          signupForm.value.password &&
+          !passwordError.value &&
+          signupForm.value.name &&
+          !nameError.value &&
+          selectedStore.value &&
+          businessVerified.value &&
+          // ✅ 업종 반드시 선택해야 가입 가능
+          !!signupForm.value.industryCode
     })
 
     // 아이디 검증
@@ -283,7 +364,6 @@ export default {
         return
       }
 
-      // 실제 API 호출
       try {
         const response = await authApi.checkUsername(userId)
 
@@ -381,8 +461,9 @@ export default {
       businessNumberError.value = ''
 
       try {
-        // 실제 사업자 상태조회 API 호출
-        const response = await authApi.verifyBusiness(signupForm.value.businessNumber.replace(/\D/g, ''))
+        const response = await authApi.verifyBusiness(
+            signupForm.value.businessNumber.replace(/\D/g, '')
+        )
 
         if (response.success && response.verified) {
           businessInfo.value = {
@@ -399,7 +480,8 @@ export default {
 
       } catch (error) {
         console.error('사업자 인증 실패:', error)
-        businessNumberError.value = error.message || '사업자 인증에 실패했습니다. 다시 시도해주세요.'
+        businessNumberError.value =
+            error.message || '사업자 인증에 실패했습니다. 다시 시도해주세요.'
         businessVerified.value = false
       } finally {
         businessVerifying.value = false
@@ -435,7 +517,6 @@ export default {
       hasSearched.value = true
 
       try {
-        // 실제 카카오 검색 API 호출
         const response = await kakaoPlacesService.searchByKeyword({
           query: searchKeyword.value.trim(),
           size: 15
@@ -450,7 +531,6 @@ export default {
           x: place.longitude.toString(),
           y: place.latitude.toString()
         }))
-
       } catch (error) {
         console.error('매장 검색 실패:', error)
         searchError.value = error.message || '매장 검색 중 오류가 발생했습니다.'
@@ -476,36 +556,43 @@ export default {
     const handleSignup = async () => {
       if (!canSignup.value) return
 
+      if (!signupForm.value.industryCode) {
+        alert('업종을 선택해주세요.')
+        return
+      }
+
       isSubmitting.value = true
 
       try {
-        // 실제 API 호출
         const signupData = {
           userId: signupForm.value.userId,
           password: signupForm.value.password,
           name: signupForm.value.name,
           businessNumber: signupForm.value.businessNumber.replace(/\D/g, ''),
           storeName: selectedStore.value.place_name,
-          storeAddress: selectedStore.value.road_address_name || selectedStore.value.address_name,
+          storeAddress:
+              selectedStore.value.road_address_name || selectedStore.value.address_name,
           storeCoordinates: {
             lat: parseFloat(selectedStore.value.y),
             lng: parseFloat(selectedStore.value.x)
           },
-          storeCategory: selectedStore.value.category_group_name,
+          // ✅ 분석/추천에서 사용할 업종 (사용자가 선택한 값)
+          industryCode: signupForm.value.industryCode,
           businessInfo: businessInfo.value
         }
 
         const response = await authApi.signup(signupData)
-
         console.log('회원가입 성공:', response)
 
-        // 회원가입 성공 시 로그인 페이지로 이동
         alert('회원가입이 완료되었습니다!')
         router.push('/login')
 
       } catch (error) {
         console.error('회원가입 실패:', error)
-        const errorMessage = error.response?.data?.message || error.message || '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'
+        const errorMessage =
+            error.response?.data?.message ||
+            error.message ||
+            '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'
         alert(errorMessage)
       } finally {
         isSubmitting.value = false
@@ -513,7 +600,9 @@ export default {
     }
 
     return {
+      // state
       signupForm,
+      industryList,
       userIdError,
       userIdChecked,
       passwordError,
@@ -533,6 +622,8 @@ export default {
       hasSearched,
       isSubmitting,
       canSignup,
+
+      // methods
       validateUserId,
       validatePassword,
       validateName,
@@ -550,6 +641,7 @@ export default {
   }
 }
 </script>
+
 
 <style scoped>
 .signup-page {

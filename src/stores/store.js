@@ -15,8 +15,8 @@ export const useStoreStore = defineStore('store', () => {
     maxResults: 50 // 최대 결과 수
   })
   const currentLocation = ref({
-    latitude: 37.5665, // 기본값: 서울시청
-    longitude: 126.9780,
+    latitude: 37.57574724,
+    longitude: 126.9572089,
     address: '서울특별시 중구 세종대로 110'
   })
   const lastSearchParams = ref(null)

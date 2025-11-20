@@ -56,7 +56,6 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { authApi } from '../services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -82,19 +81,18 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
-    // 실제 API 호출
-    const response = await authApi.login({
-      username: loginForm.username,
-      password: loginForm.password
-    })
+    // 테스트용: 아무거나 입력해도 로그인 성공
+    await new Promise(resolve => setTimeout(resolve, 500)) // 로딩 시뮬레이션
     
-    // 로그인 성공
-    authStore.login(response.user)
-    
-    // JWT 토큰 저장 (실제 구현 시)
-    if (response.token) {
-      localStorage.setItem('access_token', response.token)
+    // 테스트용 사용자 데이터로 로그인 성공
+    const testUser = {
+      name: '구본경',
+      businessNumber: '123-45-67890',
+      storeName: '영천생고기',
+      email: loginForm.username
     }
+    
+    authStore.login(testUser)
     
     // 메인 페이지로 이동
     router.push('/')
