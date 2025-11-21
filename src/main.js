@@ -1,10 +1,12 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import App from './App.vue'
 import router from './router'
 
 // Pinia 인스턴스 생성
 const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
 
 // Vue 앱 생성
 const app = createApp(App)
@@ -17,9 +19,6 @@ app.use(router)
 app.config.errorHandler = (err, instance, info) => {
   console.error('Global error:', err)
   console.error('Error info:', info)
-  
-  // 에러 리포팅 서비스에 전송 (추후 구현)
-  // errorReporting.captureException(err, { extra: { info } })
 }
 
 // 전역 warning 핸들러
@@ -33,31 +32,25 @@ if (import.meta.env.DEV) {
   app.config.performance = true
 }
 
-// 앱 마운트 (카카오맵과 무관하게)
+// 앱 마운트
 app.mount('#app')
 
-// 서비스워커 등록 (PWA 지원을 위한 준비)
+// 서비스워커 등록 (PWA)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration)
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError)
-      })
+        .then((registration) => {
+          console.log('SW registered: ', registration)
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError)
+        })
   })
 }
 
 // 브라우저 지원 체크
 const checkBrowserSupport = () => {
-  const requiredFeatures = [
-    'fetch',
-    'Promise', 
-    'Map',
-    'Set',
-    'Array.from'
-  ]
+  const requiredFeatures = ['fetch', 'Promise', 'Map', 'Set', 'Array.from']
 
   const unsupportedFeatures = requiredFeatures.filter(feature => {
     try {
@@ -69,38 +62,29 @@ const checkBrowserSupport = () => {
 
   if (unsupportedFeatures.length > 0) {
     console.warn('일부 브라우저 기능이 지원되지 않습니다:', unsupportedFeatures)
-    
-    // 폴백 처리 또는 사용자에게 브라우저 업데이트 안내
-    const shouldShowWarning = unsupportedFeatures.some(feature => 
-      ['fetch', 'Promise'].includes(feature)
+
+    const shouldShowWarning = unsupportedFeatures.some(feature =>
+        ['fetch', 'Promise'].includes(feature)
     )
-    
+
     if (shouldShowWarning) {
-      const message = '최신 브라우저를 사용해 주세요. 일부 기능이 제대로 동작하지 않을 수 있습니다.'
+      const message =
+          '최신 브라우저를 사용해 주세요. 일부 기능이 제대로 동작하지 않을 수 있습니다.'
       setTimeout(() => alert(message), 1000)
     }
   }
 }
 
-// 브라우저 지원 체크 실행
 checkBrowserSupport()
 
-// 전역 유틸리티 함수들
+// 전역 유틸리티
 window.sowhapp = {
   version: '1.0.0',
   buildDate: new Date().toISOString(),
   env: import.meta.env.MODE
 }
 
-// 개발 환경에서의 디버깅 도구
+// 🔧 개발 환경 디버깅용 (devtools hook 건들지 않기!!)
 if (import.meta.env.DEV) {
-  // Vue DevTools 설정 (읽기 전용 오류 방지)
-  try {
-    if (!window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
-      window.__VUE_DEVTOOLS_GLOBAL_HOOK__ = {}
-    }
-    window.app = app
-  } catch (error) {
-    console.warn('DevTools setup warning:', error.message)
-  }
+  window.app = app
 }

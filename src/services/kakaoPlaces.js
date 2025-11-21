@@ -204,7 +204,7 @@ class KakaoPlacesService {
       longitude: parseFloat(place.x),
       distance: distance,
       distance_meters: place.distance ? parseInt(place.distance) : null,
-      is_member: Math.random() > 0.7, // 임시: 30% 확률로 회원 매장
+      is_member: Math.random() > 0.9, // 임시: 30% 확률로 회원 매장
       rating: null, // 카카오 API에서는 평점 제공 안함
       review_count: null,
       description: null,

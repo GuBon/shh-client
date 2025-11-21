@@ -59,7 +59,7 @@ const routes = [
       title: '클러스터 상세 분석'
     },
     beforeEnter: (to, from, next) => {
-      const validTypes = ['red', 'orange', 'green', 'blue']
+      const validTypes = ['green', 'red', 'orange', 'blue']
       if (validTypes.includes(to.params.type)) {
         next()
       } else {

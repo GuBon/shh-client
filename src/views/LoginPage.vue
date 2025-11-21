@@ -56,7 +56,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { authApi } from '../services/api'
+import { authApi } from '../services/api'  //API import 추가
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -82,26 +82,38 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   try {
-    // 실제 API 호출
-    const response = await authApi.login({
-      username: loginForm.username,
-      password: loginForm.password
-    })
+    // 📋 API 명세서에 맞는 로그인 API 호출
+    const response = await authApi.login(loginForm.username, loginForm.password)
     
-    // 로그인 성공
-    authStore.login(response.user)
+    // 🔥 JWT 토큰 저장 (store와 localStorage 모두)
+    authStore.setToken(response.access_token)
     
-    // JWT 토큰 저장 (실제 구현 시)
-    if (response.token) {
-      localStorage.setItem('access_token', response.token)
+    // 사용자 정보 스토어에 저장 (실제로는 사용자 정보 API를 따로 호출해야 함)
+    const userData = {
+      name: loginForm.username, // 임시: 실제로는 사용자 정보 API에서 가져와야 함
+      loginId: loginForm.username,
+      email: loginForm.username
     }
+    
+    authStore.login(userData)
+    
+    console.log('✅ 로그인 성공:', userData.name)
     
     // 메인 페이지로 이동
     router.push('/')
     
   } catch (error) {
-    console.error('로그인 실패:', error)
-    errorMessage.value = '로그인에 실패했습니다. 아이디와 비밀번호를 확인해 주세요.'
+    console.error('❌ 로그인 실패:', error)
+    
+    // API 응답에 따른 에러 메시지 처리
+    if (error.response?.status === 401) {
+      errorMessage.value = '아이디 또는 비밀번호가 올바르지 않습니다.'
+    } else if (error.response?.status === 422) {
+      errorMessage.value = '입력한 정보를 다시 확인해주세요.'
+    } else {
+      errorMessage.value = error.response?.data?.detail || 
+                          '로그인 중 오류가 발생했습니다. 다시 시도해주세요.'
+    }
   } finally {
     isLoading.value = false
   }

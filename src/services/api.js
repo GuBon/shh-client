@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // API 기본 설정
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1', //
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,7 +12,13 @@ const apiClient = axios.create({
 // 요청 인터셉터
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    console.log(`🚀 API Request:`, {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      headers: config.headers,
+      data: config.data
+    })
     
     // JWT 토큰이 있다면 헤더에 추가
     const token = localStorage.getItem('access_token')
@@ -22,7 +28,7 @@ apiClient.interceptors.request.use(
     return config
   },
   (error) => {
-    console.error('API Request Error:', error)
+    console.error('❌ API Request Error:', error)
     return Promise.reject(error)
   }
 )
@@ -30,16 +36,25 @@ apiClient.interceptors.request.use(
 // 응답 인터셉터
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`)
+    console.log(`✅ API Response:`, {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    })
     return response.data
   },
   (error) => {
-    console.error('API Response Error:', {
+    const errorInfo = {
       url: error.config?.url,
+      method: error.config?.method,
       status: error.response?.status,
+      statusText: error.response?.statusText,
       message: error.message,
-      data: error.response?.data
-    })
+      data: error.response?.data,
+      headers: error.response?.headers
+    }
+    
+    console.error('❌ API Response Error:', errorInfo)
     
     if (error.response?.status === 401) {
       // 인증 오류 처리
@@ -61,7 +76,7 @@ export const storeApi = {
       const response = await apiClient.get('/stores/search', { params })
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
         return getMockStoreData(params)
       }
@@ -75,38 +90,88 @@ export const storeApi = {
       const response = await apiClient.get(`/stores/${storeId}`)
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
         return getMockStoreDetail(storeId)
+      }
+      throw error
+    }
+  },
+
+  // 내 상권 정보 조회
+  async getMyDistrict() {
+    try {
+      const response = await apiClient.get('/stores/me/district')
+      return response
+    } catch (error) {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
+        return getMockMyDistrict()
       }
       throw error
     }
   }
 }
 
-// Auth API
+// ===========================================
+// 🔐 1. 인증 관련 API (/auth)
+// ===========================================
 export const authApi = {
-  // 로그인
-  async login(credentials) {
+  // 1.1 아이디 중복 체크
+  async checkUsername(loginId) {
     try {
-      const response = await apiClient.post('/auth/login', credentials)
+      const response = await apiClient.get('/auth/check-username', {
+        params: { login_id: loginId }
+      })
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        console.warn('API 서버 연결 실패 - 모킹 로그인')
-        return getMockLoginResponse(credentials)
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
+        return getMockUsernameCheck(loginId)
       }
       throw error
     }
   },
 
-  // 회원가입
+  // 1.2 사업자등록번호 검증
+  async verifyBusiness(businessNumber) {
+    try {
+      console.log('🔍 사업자 인증 요청:', businessNumber)
+      const response = await apiClient.post('/auth/verify-business', null, {
+        params: { businessNumber }
+      })
+      return response
+    } catch (error) {
+      console.log('🔍 사업자 인증 에러 상세:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      })
+      
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
+        return getMockBusinessVerification(businessNumber)
+      }
+      throw error
+    }
+  },
+
+  // 1.3 회원가입
   async signup(userData) {
     try {
+      // ✅ JSON 유지, 하지만 에러 처리 강화
       const response = await apiClient.post('/auth/signup', userData)
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      console.log('🔍 회원가입 에러 상세:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      })
+      
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         console.warn('API 서버 연결 실패 - 모킹 회원가입')
         return getMockSignupResponse(userData)
       }
@@ -114,29 +179,54 @@ export const authApi = {
     }
   },
 
-  // 아이디 중복 확인
-  async checkUsername(username) {
+  // 1.4 로그인
+  async login(username, password) {
     try {
-      const response = await apiClient.get(`/auth/check-username?username=${username}`)
+      console.log('🔍 로그인 시도:', { username, password: '***' })
+      
+      // x-www-form-urlencoded 형태로 전송
+      const formData = new URLSearchParams()
+      formData.append('username', username)
+      formData.append('password', password)
+
+      console.log('🔍 로그인 FormData:', formData.toString())
+
+      const response = await apiClient.post('/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      })
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockUsernameCheck(username)
+      console.log('🔍 로그인 에러 상세:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      })
+      
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 로그인')
+        return getMockLoginResponse({ username, password })
       }
       throw error
     }
   },
 
-  // 사업자 상태조회 (사업자등록번호만 필요)
-  async verifyBusiness(businessNumber) {
+  // 🔥 1.5 현재 사용자 정보 조회 (토큰 유효성 검증)
+  async getCurrentUser() {
     try {
-      const response = await apiClient.post('/auth/verify-business', {
-        business_number: businessNumber  // 백엔드 스키마에 맞게 수정
-      })
+      const response = await apiClient.get('/auth/me')
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockBusinessVerification(businessNumber)
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 사용자 정보')
+        return getMockCurrentUser()
       }
       throw error
     }
@@ -151,7 +241,7 @@ export const analysisApi = {
       const response = await apiClient.get('/analysis/my-district')
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         return getMockDistrictAnalysis()
       }
       throw error
@@ -164,7 +254,7 @@ export const analysisApi = {
       const response = await apiClient.get(`/analysis/clusters/${clusterType}`)
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         return getMockClusterAnalysis(clusterType)
       }
       throw error
@@ -174,60 +264,32 @@ export const analysisApi = {
 
 // Recommendation API
 export const recommendationApi = {
+  // 업종 추천 조회
+  async getIndustryRecommendations(params) {
+    try {
+      const response = await apiClient.get('/recommendations/industries', {params})
+      return response
+    } catch (error) {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+        console.warn('API 서버 연결 실패 - 모킹 데이터 반환')
+        return getMockIndustryRecommendations(params)
+      }
+      throw error
+    }
+  },
+
   // 제휴 파트너 추천
   async getPartnerRecommendations(params) {
     try {
-      const response = await apiClient.get('/recommendations/partners', { params })
+      const response = await apiClient.get('/recommendations/partners', {params})
       return response
     } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
+      if (import.meta.env.DEV && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
         return getMockPartnerRecommendations()
       }
       throw error
     }
   },
-
-  // 확장 입지 추천
-  async getExpansionRecommendations(params) {
-    try {
-      const response = await apiClient.get('/recommendations/expansion', { params })
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockExpansionRecommendations()
-      }
-      throw error
-    }
-  }
-}
-
-// Coupon API
-export const couponApi = {
-  // 쿠폰 생성
-  async createCoupon(couponData) {
-    try {
-      const response = await apiClient.post('/coupons/', couponData)
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockCouponCreation(couponData)
-      }
-      throw error
-    }
-  },
-
-  // 사용 가능한 쿠폰 조회
-  async getAvailableCoupons(params) {
-    try {
-      const response = await apiClient.get('/coupons/available', { params })
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockAvailableCoupons()
-      }
-      throw error
-    }
-  }
 }
 
 // 카테고리 API
@@ -241,63 +303,6 @@ export const categoryApi = {
       if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
         console.warn('API 서버 연결 실패 - 기본 카테고리 반환')
         return getMockCategories()
-      }
-      throw error
-    }
-  }
-}
-
-// 지역 API  
-export const regionApi = {
-  // 현재 지역 정보
-  async getCurrentRegion() {
-    try {
-      const response = await apiClient.get('/regions/current')
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return getMockCurrentRegion()
-      }
-      throw error
-    }
-  },
-
-  // 지역 목록
-  async getRegions() {
-    try {
-      const response = await apiClient.get('/regions/list')
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return { regions: [] }
-      }
-      throw error
-    }
-  },
-
-  // 지역 자동완성
-  async searchRegions(query) {
-    try {
-      const response = await apiClient.get('/regions/autocomplete', {
-        params: { q: query }
-      })
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return { regions: [] }
-      }
-      throw error
-    }
-  },
-
-  // 좌표 변환
-  async convertCoordinates(data) {
-    try {
-      const response = await apiClient.post('/coordinates/convert', data)
-      return response
-    } catch (error) {
-      if (import.meta.env.DEV && error.code === 'ERR_NETWORK') {
-        return { coordinates: data }
       }
       throw error
     }
@@ -411,40 +416,17 @@ function getMockStoreDetail(storeId) {
   return { store }
 }
 
-function getMockLoginResponse(credentials) {
-  return {
-    user: {
-      id: 'user_001',
-      username: credentials.username,
-      name: '구본경',
-      email: credentials.username,
-      role: 'STORE_OWNER'
-    },
-    token: 'mock_jwt_token_' + Date.now()
-  }
-}
+// ===========================================
+// 📋 5. 개발용 모킹 데이터 함수들 (API 명세서에 정확히 맞춤)
+// ===========================================
 
-function getMockSignupResponse(userData) {
+function getMockUsernameCheck(loginId) {
+  const duplicateUsernames = ['admin', 'test', 'user', 'owner', 'testuser']
   return {
-    success: true,
-    message: '회원가입이 완료되었습니다.',
-    user: {
-      id: 'user_' + Date.now(),
-      username: userData.username,
-      name: userData.name,
-      phone: userData.phone,
-      role: 'STORE_OWNER'
-    }
-  }
-}
-
-function getMockUsernameCheck(username) {
-  const duplicateUsernames = ['admin', 'test', 'user', 'owner']
-  return {
-    available: !duplicateUsernames.includes(username.toLowerCase()),
-    message: duplicateUsernames.includes(username.toLowerCase()) 
-      ? '이미 사용중인 아이디입니다.' 
-      : '사용 가능한 아이디입니다.'
+    available: !duplicateUsernames.includes(loginId.toLowerCase()),
+    message: duplicateUsernames.includes(loginId.toLowerCase()) 
+      ? '이미 사용 중인 아이디입니다.' 
+      : null
   }
 }
 
@@ -453,13 +435,38 @@ function getMockBusinessVerification(businessNumber) {
     success: true,
     verified: true,
     businessInfo: {
-      businessNumber: businessNumber,
-      businessName: '소확행 사업장',
-      representativeName: '구본경',
-      businessType: '일반음식점',
-      businessAddress: '서울특별시 중구 명동길 26',
-      businessStatus: '계속사업자'
+      businessName: "소확행 샘플 상호",
+      representativeName: "홍길동",
+      businessType: "일반과세자",
+      businessStatus: "영업중"
     }
+  }
+}
+
+function getMockSignupResponse(userData) {
+  return {
+    id: 1,
+    loginId: userData.login_id,
+    name: userData.name
+  }
+}
+
+function getMockLoginResponse(credentials) {
+  return {
+    access_token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.mock_token_" + Date.now(),
+    token_type: "bearer"
+  }
+}
+
+function getMockCurrentUser() {
+  return {
+    id: 1,
+    loginId: "testuser",
+    name: "홍길동",
+    email: "test@example.com",
+    businessNumber: "123-45-67890",
+    businessName: "소확행 테스트 상호",
+    clusterType: "blue"
   }
 }
 
@@ -576,6 +583,55 @@ function getMockAvailableCoupons() {
         title: '10% 할인 쿠폰',
         discount: 10,
         expiresAt: '2024-12-31'
+      }
+    ]
+  }
+}
+
+// 내 상권 정보 모킹
+function getMockMyDistrict() {
+  return {
+    district_code: "GANG123",
+    district_name: "테헤란로상권",
+    district_cluster_label: 1,
+    district_cluster_type: "red",
+    coordinates: {
+      latitude: 37.498095,
+      longitude: 127.027621
+    }
+  }
+}
+
+// 업종 추천 모킹
+function getMockIndustryRecommendations(params) {
+  return {
+    userIndustry: "커피전문점/카페/다방",
+    clusterLabel: 0,
+    clusterName: "young_female",
+    recommendations: [
+      {
+        industryName: "베이커리",
+        similarityScore: 0.85,
+        avgAge: 28.5,
+        avgFemaleRatio: 0.72,
+        clusterLabel: 0,
+        comment: "비슷한 연령대의 여성 고객층을 타깃으로 하는 업종입니다"
+      },
+      {
+        industryName: "화장품/향수",
+        similarityScore: 0.78,
+        avgAge: 26.3,
+        avgFemaleRatio: 0.89,
+        clusterLabel: 0,
+        comment: "젊은 여성층 중심의 뷰티 관련 업종입니다"
+      },
+      {
+        industryName: "패션/의류",
+        similarityScore: 0.72,
+        avgAge: 29.1,
+        avgFemaleRatio: 0.68,
+        clusterLabel: 0,
+        comment: "20-30대 여성들이 자주 찾는 패션 업종입니다"
       }
     ]
   }

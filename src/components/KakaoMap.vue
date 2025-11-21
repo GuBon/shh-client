@@ -1,22 +1,22 @@
 <template>
   <div class="kakao-map-container">
+
     <div id="map" class="map" ref="mapContainer"></div>
-    
-    <!-- 지도 컨트롤 -->
+
     <div class="map-controls">
-      <button 
-        class="current-location-btn"
-        @click="getCurrentLocation"
-        :disabled="loading"
-        title="현재 위치로 이동"
+      <button
+          class="current-location-btn"
+          @click="getCurrentLocation"
+          :disabled="loading"
+          title="현재 위치로 이동"
       >
         <i class="icon-gps" :class="{ loading }"></i>
       </button>
-      
-      <button 
-        class="my-store-btn"
-        @click="goToMyStore"
-        title="내 가게 위치"
+
+      <button
+          class="my-store-btn"
+          @click="goToMyStore"
+          title="내 가게 위치"
       >
         <i class="icon-store"></i>
       </button>
@@ -38,6 +38,8 @@
   </div>
 </template>
 
+
+
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStoreStore } from '../stores/store'
@@ -54,7 +56,7 @@ const props = defineProps({
   },
   center: {
     type: Object,
-    default: () => ({ latitude: 37.5665, longitude: 126.9780 })
+    default: () => ({ latitude: 37.57574724, longitude: 126.9572089})
   }
 })
 
@@ -85,10 +87,10 @@ const initializeMap = async () => {
     console.log('Starting map initialization...')
     console.log('Kakao SDK status:', kakaoMapService.getSDKStatus())
 
-    // ✅ 먼저 kakao 객체를 받아온다
+    // 먼저 kakao 객체를 받아온다
     const kakao = await kakaoMapService.loadKakaoMapSDK()
 
-    // ✅ 그 다음에 LatLng 생성
+    //그 다음에 LatLng 생성
     const mapOptions = {
       center: new kakao.maps.LatLng(
         props.center.latitude,
@@ -258,7 +260,18 @@ const getCurrentLocation = async () => {
 }
 
 // 내 가게 위치로 이동
-const goToMyStore = () => {
+const goToMyStore = async () => {
+  // 📍 Store에서 내 매장 좌표 가져오기
+  const myStoreCoordinates = storeStore.myStoreInfo.coordinates
+  
+  if (myStoreCoordinates) {
+    console.log('🏬 내 매장 위치로 이동:', myStoreCoordinates)
+    await moveToLocation(myStoreCoordinates)
+  } else {
+    console.warn('⚠️ 내 매장 좌표 정보가 없습니다.')
+    alert('내 매장 위치 정보를 불러올 수 없습니다.')
+  }
+  
   emit('go-to-my-store')
 }
 
@@ -328,7 +341,7 @@ onUnmounted(() => {
 .kakao-map-container {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   background: #f5f5f5;
 }
 
@@ -337,33 +350,32 @@ onUnmounted(() => {
   height: 100%;
 }
 
-/* 지도 컨트롤 - 디버깅용 */
+/* 지도 컨트롤 */
 .map-controls {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  z-index: 50; /* z-index를 높여서 확실히 보이게 함 */
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* 임시 디버깅: 배경색으로 영역 확인 */
-  /* background: rgba(255, 0, 0, 0.2); */
-  /* padding: 4px; */
 }
 
 /* 지도 버튼 공통 스타일 */
 .current-location-btn,
 .my-store-btn {
-  width: 44px;
-  height: 44px;
+  width: 44px !important;
+  height: 44px !important;
   border-radius: 6px; /* 좀 더 둥글게 */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* 그림자 강화 */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important; /* 그림자 강화 */
   transition: all 0.2s;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   border: none;
+  position: relative !important;
+  z-index: 1001 !important; /* 버튼도 높은 z-index */
 }
 
 .current-location-btn:hover,
@@ -385,12 +397,14 @@ onUnmounted(() => {
 
 /* 내 가게 위치 버튼 */
 .my-store-btn {
-  background: #ff6b35;
-  color: white;
+  background: #ff6b35 !important;
+  color: white !important;
+  border: 2px solid #ff6b35 !important;
 }
 
 .my-store-btn:hover {
-  background: #e55a2b;
+  background: #e55a2b !important;
+  border-color: #e55a2b !important;
 }
 
 .icon-gps::before {
@@ -556,4 +570,28 @@ onUnmounted(() => {
     color: #9ca3af;
   }
 }
+/* 맵 레이어는 그냥 바닥에 깔리게 */
+.map {
+  position: relative; /* 혹시 전역에서 absolute 준 게 있으면 덮어쓰기 */
+  z-index: 1;
+}
+
+/* 컨트롤은 확실히 그 위로 */
+.map-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999; /* 맵 위로 확실히 올리기 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 혹시 어디선가 display:none; 먹은 경우 대비 */
+.current-location-btn,
+.my-store-btn {
+  display: flex !important;
+}
+
+
 </style>

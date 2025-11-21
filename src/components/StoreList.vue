@@ -314,7 +314,7 @@ const defaultCategories = [
 ]
 
 // 헤더에서 표시하는 추천 업종 코드 (음식점, 소매업)
-const RECOMMENDED_CODES = ['FD6', 'MT1', 'CS2']  // 음식점, 대형마트, 편의점
+const RECOMMENDED_CODES = []  // 음식점, 대형마트, 편의점
 
 let searchTimeout = null
 

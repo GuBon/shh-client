@@ -4,952 +4,1205 @@
       <!-- 로고 -->
       <div class="logo-section">
         <img src="/images/logo.png" alt="소확행" class="logo" />
-        <h1 class="page-title">회원가입</h1>
+        <h2 class="page-title">회원가입</h2>
       </div>
 
-      <!-- 회원가입 단계 표시 -->
-      <div class="step-indicator">
-        <div class="step" :class="{ active: currentStep >= 1 }">
-          <span class="step-number">1</span>
-          <span class="step-text">기본정보</span>
+      <!-- 회원가입 폼 -->
+      <form @submit.prevent="handleSignup" class="signup-form">
+
+        <!-- 아이디 -->
+        <div class="form-group">
+          <label class="form-label">아이디</label>
+          <input
+            v-model="signupForm.userId"
+            type="text"
+            class="form-input"
+            placeholder="아이디를 입력하세요"
+            :class="{ error: userIdError }"
+            @blur="validateUserId"
+            required
+          />
+          <div v-if="userIdError" class="error-message">{{ userIdError }}</div>
+          <div v-if="userIdChecked && !userIdError" class="success-message">✓ 사용 가능한 아이디입니다</div>
         </div>
-        <div class="step-divider"></div>
-        <div class="step" :class="{ active: currentStep >= 2 }">
-          <span class="step-number">2</span>
-          <span class="step-text">사업자인증</span>
+
+        <!-- 비밀번호 -->
+        <div class="form-group">
+          <label class="form-label">비밀번호</label>
+          <input
+            v-model="signupForm.password"
+            type="password"
+            class="form-input"
+            placeholder="비밀번호를 입력하세요"
+            :class="{ error: passwordError }"
+            @input="validatePassword"
+            required
+          />
+          <div v-if="passwordError" class="error-message">{{ passwordError }}</div>
         </div>
-        <div class="step-divider"></div>
-        <div class="step" :class="{ active: currentStep >= 3 }">
-          <span class="step-number">3</span>
-          <span class="step-text">완료</span>
+
+        <!-- 성명 -->
+        <div class="form-group">
+          <label class="form-label">성명</label>
+          <input
+            v-model="signupForm.name"
+            type="text"
+            class="form-input"
+            placeholder="성명을 입력하세요"
+            :class="{ error: nameError }"
+            @blur="validateName"
+            required
+          />
+          <div v-if="nameError" class="error-message">{{ nameError }}</div>
         </div>
-      </div>
 
-      <!-- 1단계: 기본 정보 입력 -->
-      <div v-if="currentStep === 1" class="step-content">
-        <form @submit.prevent="goToBusinessVerification" class="signup-form">
-          
-          <!-- 아이디 -->
-          <div class="form-group">
-            <label class="form-label">아이디</label>
-            <div class="input-with-button">
-              <input
-                v-model="signupForm.username"
-                type="text"
-                placeholder="아이디를 입력하세요"
-                class="form-input"
-                :class="{ error: usernameError }"
-                @blur="validateUsername"
-                required
-              />
-              <button 
-                type="button" 
-                @click="checkDuplicateUsername"
-                class="check-btn"
-                :disabled="!signupForm.username || isCheckingUsername"
-              >
-                {{ isCheckingUsername ? '확인중...' : '중복확인' }}
-              </button>
-            </div>
-            <p v-if="usernameError" class="error-text">{{ usernameError }}</p>
-            <p v-if="usernameValid" class="success-text">✓ 사용 가능한 아이디입니다</p>
-          </div>
-
-          <!-- 비밀번호 -->
-          <div class="form-group">
-            <label class="form-label">비밀번호</label>
+        <!-- 매장 찾기 -->
+        <div class="form-group">
+          <label class="form-label">매장 찾기</label>
+          <div class="search-container">
             <input
-              v-model="signupForm.password"
-              type="password"
-              placeholder="비밀번호를 입력하세요"
-              class="form-input"
-              :class="{ error: passwordError }"
-              @blur="validatePassword"
-              required
-            />
-            <p v-if="passwordError" class="error-text">{{ passwordError }}</p>
-          </div>
-
-          <!-- 전화번호 -->
-          <div class="form-group">
-            <label class="form-label">전화번호</label>
-            <input
-              v-model="signupForm.phone"
-              type="tel"
-              placeholder="010-1234-5678"
-              class="form-input"
-              :class="{ error: phoneError }"
-              @input="formatPhone"
-              @blur="validatePhone"
-              required
-            />
-            <p v-if="phoneError" class="error-text">{{ phoneError }}</p>
-          </div>
-
-          <!-- 성명(대표) -->
-          <div class="form-group">
-            <label class="form-label">성명(대표)</label>
-            <input
-              v-model="signupForm.name"
+              v-model="storeSearchQuery"
               type="text"
-              placeholder="대표자 이름을 입력하세요"
+              class="form-input search-input"
+              placeholder="매장명을 검색하세요"
+              @input="onSearchInput"
+              @keyup.enter="searchStores"
+              readonly
+            />
+            <button
+              type="button"
+              @click="openStoreSearch"
+              class="search-btn"
+            >
+              매장명 검색
+            </button>
+          </div>
+
+          <!-- 선택된 매장 정보 -->
+          <div v-if="selectedStore" class="selected-store">
+            <div class="store-info">
+              <div class="store-name">{{ selectedStore.place_name }}</div>
+              <div class="store-address">{{ selectedStore.road_address_name || selectedStore.address_name }}</div>
+            </div>
+            <button type="button" @click="clearSelectedStore" class="change-btn">변경</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">업종 선택</label>
+
+          <select
+              v-model="signupForm.industryCode"
               class="form-input"
               required
+          >
+            <option value="" disabled>업종을 선택하세요</option>
+            <option
+                v-for="industry in industryList"
+                :key="industry"
+                :value="industry"
+            >
+              {{ industry }}
+            </option>
+          </select>
+
+          <div v-if="!signupForm.industryCode" class="error-message">
+            업종을 선택해야 합니다.
+          </div>
+        </div>
+
+        <!-- 사업자등록번호 -->
+        <div class="form-group">
+          <label class="form-label">사업자등록번호</label>
+          <div class="business-container">
+            <input
+              v-model="signupForm.businessNumber"
+              type="text"
+              class="form-input business-input"
+              placeholder="000-00-00000"
+              :class="{ error: businessNumberError }"
+              @input="formatBusinessNumber"
+              @blur="validateBusinessNumber"
+              required
             />
+            <button
+              type="button"
+              @click="verifyBusiness"
+              class="verify-btn"
+              :disabled="!isBusinessNumberValid || businessVerifying"
+            >
+              {{ businessVerifying ? '확인중...' : '사업자 인증' }}
+            </button>
+          </div>
+          <div v-if="businessNumberError" class="error-message">{{ businessNumberError }}</div>
+          <div v-if="businessVerified" class="success-message">
+            ✓ 사업자 인증이 완료되었습니다 ({{ businessInfo.business_name }})
+          </div>
+        </div>
+
+        <!-- 회원가입 버튼 -->
+        <button
+          type="submit"
+          class="signup-btn"
+          :disabled="!canSignup || isSubmitting"
+        >
+          {{ isSubmitting ? '가입중...' : '회원가입' }}
+        </button>
+      </form>
+
+      <!-- 로그인 링크 -->
+      <div class="login-link-section">
+        <router-link to="/login" class="login-link">
+          이미 계정이 있으신가요? 로그인
+        </router-link>
+      </div>
+    </div>
+
+    <!-- 매장 검색 모달 -->
+    <div v-if="showSearchModal" class="modal-overlay" @click="closeSearchModal">
+      <div class="search-modal" @click.stop>
+        <div class="modal-header">
+          <h3>매장 검색</h3>
+          <button @click="closeSearchModal" class="close-btn">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="search-box">
+            <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="매장명을 입력하세요"
+              class="search-input-modal"
+              @keyup.enter="performSearch"
+              @input="onSearchKeywordChange"
+            />
+            <button @click="performSearch" class="search-btn-modal" :disabled="!searchKeyword.trim() || isSearching">
+              {{ isSearching ? '검색중...' : '검색' }}
+            </button>
           </div>
 
-          <!-- 사업자 등록번호 -->
-          <div class="form-group">
-            <label class="form-label">사업자 등록번호</label>
-            <div class="input-with-button">
-              <input
-                v-model="signupForm.businessNumber"
-                type="text"
-                placeholder="000-00-00000"
-                class="form-input"
-                :class="{ error: businessNumberError }"
-                @input="formatBusinessNumber"
-                @blur="validateBusinessNumber"
-                required
-              />
-              <button 
-                type="button" 
-                @click="verifyBusinessNumber"
-                class="verify-btn"
-                :disabled="!isBusinessNumberValid || isVerifyingBusiness"
+          <!-- 검색 결과 -->
+          <div class="search-results">
+            <div v-if="isSearching" class="loading">
+              <div class="loading-spinner"></div>
+              <p>매장을 검색하고 있습니다...</p>
+            </div>
+
+            <div v-else-if="searchError" class="search-error">
+              <p>{{ searchError }}</p>
+              <button @click="performSearch" class="retry-btn">다시 시도</button>
+            </div>
+
+            <div v-else-if="searchResults.length === 0 && hasSearched" class="no-results">
+              <p>검색 결과가 없습니다.</p>
+              <p>다른 키워드로 검색해 보세요.</p>
+            </div>
+
+            <div v-else-if="searchResults.length > 0" class="results-list">
+              <div class="results-header">
+                검색 결과 {{ searchResults.length }}개
+              </div>
+              <div
+                v-for="result in searchResults"
+                :key="result.id"
+                class="result-item"
+                @click="selectStoreFromModal(result)"
               >
-                {{ isVerifyingBusiness ? '확인중...' : '사업자 인증' }}
-              </button>
-            </div>
-            <p v-if="businessNumberError" class="error-text">{{ businessNumberError }}</p>
-            <p v-if="businessNumberValid" class="success-text">✓ 인증이 완료되었습니다</p>
-          </div>
-
-          <!-- 업종 -->
-          <div class="form-group">
-            <label class="form-label">업종</label>
-            <div class="industry-selector" @click="toggleIndustryDropdown">
-              <input
-                :value="selectedIndustryText"
-                type="text"
-                placeholder="업종을 선택하세요"
-                class="form-input industry-input"
-                readonly
-                required
-              />
-              <div class="dropdown-arrow" :class="{ open: showIndustryDropdown }">▼</div>
-            </div>
-            
-            <!-- 업종 드롭다운 -->
-            <div v-if="showIndustryDropdown" class="industry-dropdown">
-              <div class="industry-list">
-                <div 
-                  v-for="industry in industryOptions" 
-                  :key="industry.code"
-                  class="industry-option"
-                  @click="selectIndustry(industry)"
-                >
-                  <span class="industry-icon">{{ industry.icon }}</span>
-                  <span class="industry-name">{{ industry.name }}</span>
+                <div class="result-content">
+                  <div class="result-name">{{ result.place_name }}</div>
+                  <div class="result-address">{{ result.road_address_name || result.address_name }}</div>
+                  <div class="result-category">{{ result.category_group_name }}</div>
                 </div>
+                <div class="select-indicator">선택</div>
               </div>
             </div>
           </div>
-
-          <button type="submit" class="next-btn" :disabled="!isStep1Valid">
-            회원 가입
-          </button>
-
-        </form>
-      </div>
-
-      <!-- 2단계: 사업자 인증 진행 -->
-      <div v-else-if="currentStep === 2" class="step-content verification-step">
-        <div class="verification-status">
-          <div class="status-icon loading">⏳</div>
-          <h2>사업자 정보를 확인하고 있습니다</h2>
-          <p>잠시만 기다려 주세요...</p>
-          
-          <div class="verification-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: verificationProgress + '%' }"></div>
-            </div>
-            <p class="progress-text">{{ verificationProgress }}% 완료</p>
-          </div>
         </div>
       </div>
-
-      <!-- 3단계: 가입 완료 -->
-      <div v-else-if="currentStep === 3" class="step-content completion-step">
-        <div class="completion-status">
-          <div class="status-icon success">✅</div>
-          <h2>가입이 완료되었습니다</h2>
-          <p>{{ signupForm.name }}님, 소확행에 오신 것을 환영합니다!</p>
-          
-          <div class="completion-info">
-            <div class="info-item">
-              <span class="info-label">아이디:</span>
-              <span class="info-value">{{ signupForm.username }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">사업장:</span>
-              <span class="info-value">{{ verificationResult.businessName }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">업종:</span>
-              <span class="info-value">{{ selectedIndustryText }}</span>
-            </div>
-          </div>
-
-          <button @click="goToLogin" class="complete-btn">
-            로그인 하러 가기
-          </button>
-        </div>
-      </div>
-
-      <!-- 뒤로 가기 (1단계에서만) -->
-      <div v-if="currentStep === 1" class="back-section">
-        <router-link to="/login" class="back-link">이미 계정이 있으신가요? 로그인</router-link>
-      </div>
-
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+<script>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { authApi } from '../services/api'
+import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/services/api'
+import kakaoPlacesService from '@/services/kakaoPlaces' // ✅ 카카오 Places API 추가
 
-const router = useRouter()
+export default {
+  name: 'SignUpPage',
+  setup() {
+    const router = useRouter()
+    const authStore = useAuthStore()
 
-// 상태
-const currentStep = ref(1)
-const showIndustryDropdown = ref(false)
-const isCheckingUsername = ref(false)
-const isVerifyingBusiness = ref(false)
-const verificationProgress = ref(0)
+    // ✅ CSV 기반 업종 리스트 (일부만 예시, 나머지는 CSV에서 그대로 추가)
+    const industryList = ref([
+          "PC방",
+          "가구",
+          "가방",
+          "가전제품",
+          "가전제품수리",
+          "골프연습장",
+          "네일숍",
+          "노래방",
+          "당구장",
+          "문구",
+          "미곡판매",
+          "미용실",
+          "반찬가게",
+          "부동산중개업",
+          "분식전문점",
+          "서적",
+          "슈퍼마켓",
+          "스포츠클럽",
+          "스포츠용품판매",
+          "식료품",
+          "안경점",
+          "애견용품",
+          "약국",
+          "여관",
+          "옷가게",
+          "운동용품",
+          "의료기기",
+          "의류수선",
+          "의원",
+          "자동차수리",
+          "정육점",
+          "제과점",
+          "주유소",
+          "주차장",
+          "중고품판매",
+          "중식음식점",
+          "철물점",
+          "청과상",
+          "치과의원",
+          "치킨전문점",
+          "커피-음료",
+          "컴퓨터및주변장치판매",
+          "패스트푸드점",
+          "편의점",
+          "피부관리실",
+          "한식음식점",
+          "한의원",
+          "핸드폰",
+          "호프-간이주점",
+          "화장품",
+          "화초"
+        ]
+    )
 
-// 폼 데이터
-const signupForm = reactive({
-  username: '',
-  password: '',
-  phone: '',
-  name: '',
-  businessNumber: '',
-  industry: ''
-})
-
-// 검증 상태
-const usernameError = ref('')
-const usernameValid = ref(false)
-const passwordError = ref('')
-const phoneError = ref('')
-const businessNumberError = ref('')
-const businessNumberValid = ref(false)
-
-// 인증 결과
-const verificationResult = ref({
-  businessName: '',
-  businessType: '',
-  businessAddress: ''
-})
-
-// 업종 옵션
-const industryOptions = ref([
-  { code: 'FD6', name: '음식점', icon: '🍽️' },
-  { code: 'CE7', name: '카페', icon: '☕' },
-  { code: 'CS2', name: '편의점', icon: '🏪' },
-  { code: 'MT1', name: '대형마트', icon: '🛒' },
-  { code: 'CT1', name: '문화시설', icon: '🎭' },
-  { code: 'BK9', name: '은행', icon: '🏦' },
-  { code: 'HP8', name: '병원', icon: '🏥' },
-  { code: 'PM9', name: '약국', icon: '💊' },
-  { code: 'AD5', name: '숙박', icon: '🏨' },
-  { code: 'OL7', name: '주유소', icon: '⛽' }
-])
-
-// 계산된 속성
-const selectedIndustryText = computed(() => {
-  const selected = industryOptions.value.find(item => item.code === signupForm.industry)
-  return selected ? selected.name : ''
-})
-
-const isBusinessNumberValid = computed(() => {
-  return signupForm.businessNumber.replace(/[^0-9]/g, '').length === 10
-})
-
-const isStep1Valid = computed(() => {
-  return signupForm.username && 
-         usernameValid.value && 
-         signupForm.password && 
-         !passwordError.value && 
-         signupForm.phone && 
-         !phoneError.value && 
-         signupForm.name && 
-         signupForm.businessStartDate && 
-         signupForm.businessNumber && 
-         businessNumberValid.value && 
-         signupForm.industry
-})
-
-// 메서드
-const validateUsername = () => {
-  if (!signupForm.username) {
-    usernameError.value = '아이디를 입력해 주세요.'
-    return false
-  }
-  if (signupForm.username.length < 4) {
-    usernameError.value = '아이디는 4자 이상이어야 합니다.'
-    return false
-  }
-  if (!/^[a-zA-Z0-9]+$/.test(signupForm.username)) {
-    usernameError.value = '아이디는 영문, 숫자만 사용할 수 있습니다.'
-    return false
-  }
-  usernameError.value = ''
-  return true
-}
-
-const checkDuplicateUsername = async () => {
-  if (!validateUsername()) return
-
-  isCheckingUsername.value = true
-  try {
-    const response = await authApi.checkUsername(signupForm.username)
-    
-    if (response.available) {
-      usernameValid.value = true
-    } else {
-      usernameError.value = response.message
-      usernameValid.value = false
-    }
-  } catch (error) {
-    usernameError.value = '중복 확인 중 오류가 발생했습니다.'
-    console.error('Username check error:', error)
-  } finally {
-    isCheckingUsername.value = false
-  }
-}
-
-const validatePassword = () => {
-  if (!signupForm.password) {
-    passwordError.value = '비밀번호를 입력해 주세요.'
-    return false
-  }
-  if (signupForm.password.length < 8) {
-    passwordError.value = '비밀번호는 8자 이상이어야 합니다.'
-    return false
-  }
-  if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(signupForm.password)) {
-    passwordError.value = '비밀번호는 영문, 숫자를 포함해야 합니다.'
-    return false
-  }
-  passwordError.value = ''
-  return true
-}
-
-const formatPhone = (event) => {
-  let value = event.target.value.replace(/[^0-9]/g, '')
-  if (value.length <= 11) {
-    if (value.length > 6) {
-      value = value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3')
-    } else if (value.length > 3) {
-      value = value.replace(/(\d{3})(\d+)/, '$1-$2')
-    }
-    signupForm.phone = value
-  }
-}
-
-const validatePhone = () => {
-  const phoneRegex = /^010-\d{4}-\d{4}$/
-  if (!phoneRegex.test(signupForm.phone)) {
-    phoneError.value = '올바른 전화번호 형식이 아닙니다.'
-    return false
-  }
-  phoneError.value = ''
-  return true
-}
-
-const formatBusinessNumber = (event) => {
-  let value = event.target.value.replace(/[^0-9]/g, '')
-  if (value.length <= 10) {
-    if (value.length > 5) {
-      value = value.replace(/(\d{3})(\d{2})(\d+)/, '$1-$2-$3')
-    } else if (value.length > 3) {
-      value = value.replace(/(\d{3})(\d+)/, '$1-$2')
-    }
-    signupForm.businessNumber = value
-  }
-}
-
-const validateBusinessNumber = () => {
-  const businessRegex = /^\d{3}-\d{2}-\d{5}$/
-  if (!businessRegex.test(signupForm.businessNumber)) {
-    businessNumberError.value = '올바른 사업자등록번호 형식이 아닙니다.'
-    return false
-  }
-  businessNumberError.value = ''
-  return true
-}
-
-const verifyBusinessNumber = async () => {
-  if (!validateBusinessNumber()) return
-
-  isVerifyingBusiness.value = true
-  try {
-    const response = await authApi.verifyBusiness(signupForm.businessNumber)
-    
-    if (response.success && response.verified) {
-      businessNumberValid.value = true
-      verificationResult.value = {
-        businessName: response.businessInfo.businessName,
-        businessType: response.businessInfo.businessType,
-        businessAddress: response.businessInfo.businessAddress
-      }
-    } else {
-      businessNumberError.value = '사업자 정보를 확인할 수 없습니다.'
-      businessNumberValid.value = false
-    }
-    
-  } catch (error) {
-    businessNumberError.value = '사업자 진위 확인에 실패했습니다.'
-    businessNumberValid.value = false
-    console.error('Business verification error:', error)
-  } finally {
-    isVerifyingBusiness.value = false
-  }
-}
-
-const toggleIndustryDropdown = () => {
-  showIndustryDropdown.value = !showIndustryDropdown.value
-}
-
-const selectIndustry = (industry) => {
-  signupForm.industry = industry.code
-  showIndustryDropdown.value = false
-}
-
-const goToBusinessVerification = async () => {
-  if (!isStep1Valid.value) return
-
-  currentStep.value = 2
-  
-  try {
-    // 진행률 시뮬레이션
-    const interval = setInterval(() => {
-      verificationProgress.value += Math.random() * 15 + 5
-      if (verificationProgress.value >= 100) {
-        verificationProgress.value = 100
-        clearInterval(interval)
-      }
-    }, 400)
-
-    // 실제 회원가입 API 호출
-    const response = await authApi.signup({
-      username: signupForm.username,
-      password: signupForm.password,
-      phone: signupForm.phone,
-      name: signupForm.name,
-      businessStartDate: signupForm.businessStartDate,
-      businessNumber: signupForm.businessNumber,
-      industry: signupForm.industry
+    // 폼 데이터
+    const signupForm = ref({
+      userId: '',
+      password: '',
+      name: '',
+      businessNumber: '',
+      industryCode: ''
     })
 
-    // 성공 시 3단계로 이동
-    setTimeout(() => {
-      currentStep.value = 3
-    }, 1000)
+    // 검증 상태
+    const userIdError = ref('')
+    const userIdChecked = ref(false)
+    const passwordError = ref('')
+    const nameError = ref('')
+    const businessNumberError = ref('')
+    const businessVerifying = ref(false)
+    const businessVerified = ref(false)
+    const businessInfo = ref({})
 
-  } catch (error) {
-    console.error('회원가입 실패:', error)
-    // 에러 처리 - 1단계로 되돌리기
-    currentStep.value = 1
-    alert('회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.')
+    // 매장 검색 관련
+    const showSearchModal = ref(false)
+    const storeSearchQuery = ref('')
+    const searchKeyword = ref('')
+    const searchResults = ref([])
+    const selectedStore = ref(null)
+    const isSearching = ref(false)
+    const searchError = ref('')
+    const hasSearched = ref(false)
+
+    // 제출 상태
+    const isSubmitting = ref(false)
+
+    // 계산된 속성
+    const isBusinessNumberValid = computed(() => {
+      return signupForm.value.businessNumber.replace(/[^0-9]/g, '').length === 10
+    })
+
+    const canSignup = computed(() => {
+      return signupForm.value.userId &&
+          userIdChecked.value &&
+          !userIdError.value &&
+          signupForm.value.password &&
+          !passwordError.value &&
+          signupForm.value.name &&
+          !nameError.value &&
+          selectedStore.value &&
+          businessVerified.value &&
+          // ✅ 업종 반드시 선택해야 가입 가능
+          !!signupForm.value.industryCode
+    })
+
+    // 아이디 검증
+    const validateUserId = async () => {
+      const userId = signupForm.value.userId.trim()
+
+      if (!userId) {
+        userIdError.value = '아이디를 입력해주세요'
+        userIdChecked.value = false
+        return
+      }
+
+      if (userId.length < 4 || userId.length > 15) {
+        userIdError.value = '아이디는 4-15자로 입력해주세요'
+        userIdChecked.value = false
+        return
+      }
+
+      if (!/^[a-zA-Z0-9]+$/.test(userId)) {
+        userIdError.value = '아이디는 영문, 숫자만 사용 가능합니다'
+        userIdChecked.value = false
+        return
+      }
+
+      try {
+        const response = await authApi.checkUsername(userId)
+
+        if (response.available) {
+          userIdError.value = ''
+          userIdChecked.value = true
+        } else {
+          userIdError.value = response.message || '이미 사용 중인 아이디입니다'
+          userIdChecked.value = false
+        }
+      } catch (error) {
+        console.error('❌ 아이디 확인 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        })
+        
+        if (error.response?.status === 405) {
+          userIdError.value = '서버 CORS 설정 문제 - 개발자에게 문의하세요'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          userIdError.value = '서버 응답 시간 초과 - 잠시 후 다시 시도하세요'
+        } else if (error.response?.status >= 500) {
+          userIdError.value = '서버 오류 - 잠시 후 다시 시도하세요'
+        } else {
+          userIdError.value = error.response?.data?.detail || '아이디 확인 중 오류가 발생했습니다'
+        }
+        userIdChecked.value = false
+      }
+    }
+
+    // 비밀번호 검증
+    const validatePassword = () => {
+      const password = signupForm.value.password
+
+      if (!password) {
+        passwordError.value = ''
+        return
+      }
+
+      if (password.length < 8) {
+        passwordError.value = '비밀번호는 8자 이상 입력해주세요'
+        return
+      }
+
+      if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
+        passwordError.value = '비밀번호는 영문과 숫자를 포함해야 합니다'
+        return
+      }
+
+      passwordError.value = ''
+    }
+
+    // 이름 검증
+    const validateName = () => {
+      const name = signupForm.value.name.trim()
+
+      if (!name) {
+        nameError.value = '성명을 입력해주세요'
+        return
+      }
+
+      if (name.length < 2) {
+        nameError.value = '성명은 2자 이상 입력해주세요'
+        return
+      }
+
+      nameError.value = ''
+    }
+
+    // 사업자등록번호 포맷팅
+    const formatBusinessNumber = () => {
+      let businessNumber = signupForm.value.businessNumber.replace(/\D/g, '')
+
+      if (businessNumber.length <= 3) {
+        signupForm.value.businessNumber = businessNumber
+      } else if (businessNumber.length <= 5) {
+        signupForm.value.businessNumber = `${businessNumber.slice(0, 3)}-${businessNumber.slice(3)}`
+      } else {
+        signupForm.value.businessNumber = `${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5, 10)}`
+      }
+    }
+
+    // 사업자등록번호 검증
+    const validateBusinessNumber = () => {
+      const businessNumber = signupForm.value.businessNumber.replace(/\D/g, '')
+
+      if (!businessNumber) {
+        businessNumberError.value = ''
+        return
+      }
+
+      if (businessNumber.length !== 10) {
+        businessNumberError.value = '올바른 사업자등록번호를 입력해주세요'
+        return
+      }
+
+      businessNumberError.value = ''
+    }
+
+    // 사업자 인증
+    const verifyBusiness = async () => {
+      if (!isBusinessNumberValid.value) {
+        businessNumberError.value = '올바른 사업자등록번호를 입력해주세요'
+        return
+      }
+
+      businessVerifying.value = true
+      businessNumberError.value = ''
+
+      try {
+        const response = await authApi.verifyBusiness(
+            signupForm.value.businessNumber.replace(/\D/g, '')
+        )
+
+        if (response.success && response.verified) {
+          businessInfo.value = {
+            business_name: response.businessInfo.businessName,
+            representative_name: response.businessInfo.representativeName,
+            business_type: response.businessInfo.businessType,
+            business_status: response.businessInfo.businessStatus
+          }
+          businessVerified.value = true
+        } else {
+          businessNumberError.value = '사업자 정보를 확인할 수 없습니다.'
+          businessVerified.value = false
+        }
+
+      } catch (error) {
+        console.error('❌ 사업자 인증 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        })
+        
+        if (error.response?.status === 405) {
+          businessNumberError.value = 'CORS 설정 문제 - 백엔드 설정을 확인해주세요'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          businessNumberError.value = '서버 응답 시간 초과 - 잠시 후 다시 시도하세요'
+        } else if (error.response?.status >= 500) {
+          businessNumberError.value = '서버 오류 - 잠시 후 다시 시도하세요'
+        } else {
+          businessNumberError.value = error.response?.data?.detail || 
+                                     '사업자 인증에 실패했습니다. 다시 시도해주세요.'
+        }
+        businessVerified.value = false
+      } finally {
+        businessVerifying.value = false
+      }
+    }
+
+    // 매장 검색 모달
+    const openStoreSearch = () => {
+      showSearchModal.value = true
+      searchKeyword.value = ''
+      searchResults.value = []
+      hasSearched.value = false
+      searchError.value = ''
+    }
+
+    const closeSearchModal = () => {
+      showSearchModal.value = false
+    }
+
+    const onSearchKeywordChange = () => {
+      if (!searchKeyword.value.trim()) {
+        searchResults.value = []
+        hasSearched.value = false
+      }
+    }
+
+    // 매장 검색 실행 (실제 카카오 API 사용)
+    const performSearch = async () => {
+      if (!searchKeyword.value.trim()) return
+
+      isSearching.value = true
+      searchError.value = ''
+      hasSearched.value = true
+
+      try {
+        console.log('🔍 카카오 API로 매장 검색 시작:', searchKeyword.value)
+        
+        const response = await kakaoPlacesService.searchByKeyword({
+          query: searchKeyword.value.trim(),
+          size: 15, // 최대 15개 결과
+          page: 1
+        })
+
+        console.log('✅ 카카오 API 검색 완료:', response.places.length, '개 결과')
+        
+        // 카카오 API 응답을 회원가입에 필요한 형식으로 변환
+        searchResults.value = response.places.map(place => ({
+          id: place.id,
+          place_name: place.name,
+          road_address_name: place.road_address,
+          address_name: place.address,
+          category_group_name: place.category_name || place.category_group_name,
+          phone: place.phone,
+          place_url: place.place_url,
+          y: place.latitude.toString(),
+          x: place.longitude.toString()
+        }))
+
+      } catch (error) {
+        console.error('❌ 카카오 API 매장 검색 실패:', error)
+        
+        if (error.message.includes('API 키')) {
+          searchError.value = '카카오 API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.'
+        } else if (error.message.includes('요청 한도')) {
+          searchError.value = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
+        } else {
+          searchError.value = error.message || '매장 검색 중 오류가 발생했습니다.'
+        }
+        
+        searchResults.value = []
+      } finally {
+        isSearching.value = false
+      }
+    }
+
+    // 매장 선택
+    const selectStoreFromModal = (store) => {
+      selectedStore.value = store
+      storeSearchQuery.value = store.place_name
+      showSearchModal.value = false
+    }
+
+    const clearSelectedStore = () => {
+      selectedStore.value = null
+      storeSearchQuery.value = ''
+    }
+
+    // 회원가입 제출 (API 명세서에 정확히 맞춤)
+    const handleSignup = async () => {
+      if (!canSignup.value) return
+
+      if (!signupForm.value.industryCode) {
+        alert('업종을 선택해주세요.')
+        return
+      }
+
+      isSubmitting.value = true
+
+      try {
+        // 📋 API 명세서에 정확히 맞는 데이터 구조
+        const signupData = {
+          login_id: signupForm.value.userId,  // ✅ login_id로 변경
+          password: signupForm.value.password,
+          name: signupForm.value.name,
+          store_info: {  // ✅ store_info 객체로 변경
+            kakao_place_id: selectedStore.value.id,
+            store_name: selectedStore.value.place_name,
+            place_url: `https://place.map.kakao.com/${selectedStore.value.id}`,
+            phone: "02-0000-0000", // 기본값 (실제로는 사업자 정보나 사용자 입력)
+            road_address_name: selectedStore.value.road_address_name || selectedStore.value.address_name,
+            industry_name: signupForm.value.industryCode,
+            x: parseFloat(selectedStore.value.x),
+            y: parseFloat(selectedStore.value.y)
+          }
+        }
+
+        console.log('🚀 회원가입 데이터 전송:', signupData)
+        
+        const response = await authApi.signup(signupData)
+        console.log('✅ 회원가입 성공:', response)
+
+        alert(`회원가입이 완료되었습니다!\n환영합니다, ${response.name}님!`)
+        router.push('/login')
+
+      } catch (error) {
+        console.error('❌ 회원가입 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        })
+        
+        let errorMessage = '회원가입 중 오류가 발생했습니다.'
+        
+        if (error.response?.status === 405) {
+          errorMessage = 'CORS 문제가 발생했습니다. 백엔드 설정을 확인해주세요.'
+        } else if (error.response?.status === 400) {
+          errorMessage = error.response?.data?.detail || '입력한 정보를 다시 확인해주세요.'
+        } else if (error.response?.status >= 500) {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          errorMessage = '서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+        } else {
+          errorMessage = error.response?.data?.detail || error.message || errorMessage
+        }
+        
+        alert(errorMessage)
+      } finally {
+        isSubmitting.value = false
+      }
+    }
+
+    return {
+      // state
+      signupForm,
+      industryList,
+      userIdError,
+      userIdChecked,
+      passwordError,
+      nameError,
+      businessNumberError,
+      businessVerifying,
+      businessVerified,
+      businessInfo,
+      isBusinessNumberValid,
+      showSearchModal,
+      storeSearchQuery,
+      searchKeyword,
+      searchResults,
+      selectedStore,
+      isSearching,
+      searchError,
+      hasSearched,
+      isSubmitting,
+      canSignup,
+
+      // methods
+      validateUserId,
+      validatePassword,
+      validateName,
+      formatBusinessNumber,
+      validateBusinessNumber,
+      verifyBusiness,
+      openStoreSearch,
+      closeSearchModal,
+      onSearchKeywordChange,
+      performSearch,
+      selectStoreFromModal,
+      clearSelectedStore,
+      handleSignup
+    }
   }
 }
-
-const goToLogin = () => {
-  router.push('/login')
-}
-
-// 외부 클릭 감지
-const handleClickOutside = (event) => {
-  if (!event.target.closest('.industry-selector')) {
-    showIndustryDropdown.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
+
 
 <style scoped>
 .signup-page {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .signup-container {
   width: 100%;
-  max-width: 520px;
+  max-width: 400px;
   background: white;
-  border-radius: 16px;
-  padding: 40px 32px;
+  border-radius: 12px;
+  padding: 40px 30px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* 로고 섹션 */
 .logo-section {
   text-align: center;
-  margin-bottom: 32px;
-}
-
-.logo {
-  width: 150px;
-  height: auto;
-  margin-bottom: 16px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #111827;
-}
-
-/* 단계 표시 */
-.step-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   margin-bottom: 40px;
 }
 
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.logo {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #FF8C42;
+  margin: 0 0 10px 0;
+  text-decoration: none;
 }
 
-.step-number {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #e5e7eb;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.step.active .step-number {
-  background: #ff6b35;
-  color: white;
-}
-
-.step-text {
-  font-size: 12px;
-  color: #6b7280;
-  transition: color 0.2s;
-}
-
-.step.active .step-text {
-  color: #ff6b35;
-}
-
-.step-divider {
-  width: 40px;
-  height: 2px;
-  background: #e5e7eb;
-  margin: 0 16px;
+.page-title {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
 }
 
 /* 폼 스타일 */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .form-group {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .form-label {
-  display: block;
-  margin-bottom: 8px;
-  color: #374151;
-  font-weight: 500;
   font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
 }
 
 .form-input {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #ff6b35;
+  border-color: #FF8C42;
+  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
 }
 
 .form-input.error {
-  border-color: #ef4444;
+  border-color: #ff4757;
 }
 
-/* 버튼이 있는 입력 필드 */
-.input-with-button {
+.form-input:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+/* 검색 컨테이너 */
+.search-container {
   display: flex;
   gap: 8px;
 }
 
-.input-with-button .form-input {
+.search-input {
+  flex: 1;
+  cursor: pointer;
+}
+
+.search-btn {
+  padding: 12px 16px;
+  background: #FF8C42;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.search-btn:hover {
+  background: #e67c37;
+}
+
+/* 사업자번호 컨테이너 */
+.business-container {
+  display: flex;
+  gap: 8px;
+}
+
+.business-input {
   flex: 1;
 }
 
-.check-btn,
 .verify-btn {
-  padding: 14px 16px;
-  background: #6b7280;
+  padding: 12px 16px;
+  background: #28a745;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
   white-space: nowrap;
-}
-
-.verify-btn {
-  background: #ff6b35;
-}
-
-.check-btn:hover:not(:disabled) {
-  background: #4b5563;
+  transition: background 0.2s;
 }
 
 .verify-btn:hover:not(:disabled) {
-  background: #e55a2b;
+  background: #218838;
 }
 
-.check-btn:disabled,
 .verify-btn:disabled {
-  opacity: 0.6;
+  background: #ccc;
   cursor: not-allowed;
 }
 
-/* 업종 선택 */
-.industry-selector {
-  position: relative;
-  cursor: pointer;
-}
-
-.industry-input {
-  cursor: pointer;
-  padding-right: 40px !important;
-}
-
-.dropdown-arrow {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
-  font-size: 12px;
-  transition: transform 0.2s;
-  pointer-events: none;
-}
-
-.dropdown-arrow.open {
-  transform: translateY(-50%) rotate(180deg);
-}
-
-.industry-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 4px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.industry-list {
-  padding: 8px 0;
-}
-
-.industry-option {
+/* 선택된 매장 정보 */
+.selected-store {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+}
+
+.store-info {
+  flex: 1;
+}
+
+.store-name {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.store-address {
+  font-size: 12px;
+  color: #666;
+}
+
+.change-btn {
+  padding: 6px 12px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.industry-option:hover {
-  background: #f9fafb;
-}
-
-.industry-icon {
-  font-size: 16px;
-}
-
-.industry-name {
-  font-size: 14px;
-  color: #374151;
+.change-btn:hover {
+  background: #545b62;
 }
 
 /* 메시지 */
-.error-text {
-  margin: 4px 0 0;
-  color: #ef4444;
+.error-message {
+  color: #ff4757;
   font-size: 12px;
+  margin-top: 4px;
 }
 
-.success-text {
-  margin: 4px 0 0;
-  color: #10b981;
+.success-message {
+  color: #2ed573;
   font-size: 12px;
+  margin-top: 4px;
 }
 
-/* 버튼 */
-.next-btn,
-.complete-btn {
+/* 회원가입 버튼 */
+.signup-btn {
   width: 100%;
-  padding: 16px 20px;
-  background: #ff6b35;
+  padding: 14px;
+  background: #FF8C42;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
-  margin-top: 24px;
+  transition: all 0.2s;
+  margin-top: 10px;
 }
 
-.next-btn:hover:not(:disabled),
-.complete-btn:hover {
-  background: #e55a2b;
+.signup-btn:hover:not(:disabled) {
+  background: #e67c37;
+  transform: translateY(-1px);
 }
 
-.next-btn:disabled {
-  opacity: 0.6;
+.signup-btn:disabled {
+  background: #ccc;
   cursor: not-allowed;
+  transform: none;
 }
 
-/* 인증 단계 */
-.verification-step,
-.completion-step {
-  text-align: center;
-  padding: 40px 0;
-}
-
-.status-icon {
-  font-size: 64px;
-  margin-bottom: 24px;
-}
-
-.verification-step h2,
-.completion-step h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  color: #111827;
-}
-
-.verification-step p,
-.completion-step p {
-  margin: 0 0 32px;
-  color: #6b7280;
-}
-
-.verification-progress {
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #ff6b35;
-  transition: width 0.3s;
-}
-
-.progress-text {
-  margin: 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.completion-info {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 32px;
-  text-align: left;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-label {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.info-value {
-  color: #111827;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-/* 뒤로 가기 */
-.back-section {
+/* 로그인 링크 */
+.login-link-section {
   text-align: center;
   margin-top: 24px;
 }
 
-.back-link {
-  color: #6b7280;
+.login-link {
+  color: #666;
   text-decoration: none;
   font-size: 14px;
   transition: color 0.2s;
 }
 
-.back-link:hover {
-  color: #ff6b35;
-  text-decoration: underline;
+.login-link:hover {
+  color: #FF8C42;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.search-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.close-btn:hover {
+  background: #f8f9fa;
+}
+
+.modal-body {
+  padding: 24px;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 검색 박스 */
+.search-box {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.search-input-modal {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-input-modal:focus {
+  outline: none;
+  border-color: #FF8C42;
+  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
+}
+
+.search-btn-modal {
+  padding: 12px 20px;
+  background: #FF8C42;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-btn-modal:hover:not(:disabled) {
+  background: #e67c37;
+}
+
+.search-btn-modal:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* 검색 결과 */
+.search-results {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #FF8C42;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.search-error, .no-results {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.retry-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #FF8C42;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.results-header {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.results-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.result-item:hover {
+  border-color: #FF8C42;
+  background: #fff8f5;
+}
+
+.result-content {
+  flex: 1;
+}
+
+.result-name {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.result-address {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.result-category {
+  font-size: 11px;
+  color: #FF8C42;
+  background: rgba(255, 140, 66, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.select-indicator {
+  color: #FF8C42;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* 반응형 */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .signup-page {
+    padding: 15px;
+  }
+
   .signup-container {
-    padding: 32px 24px;
-    margin: 0 16px;
+    padding: 30px 20px;
   }
 
   .logo {
-    width: 120px;
+    font-size: 2rem;
   }
 
-  .page-title {
-    font-size: 20px;
-  }
-
-  .step-indicator {
-    margin-bottom: 32px;
-  }
-
-  .step-divider {
-    width: 20px;
-    margin: 0 8px;
-  }
-
-  .input-with-button {
+  .search-container,
+  .business-container {
     flex-direction: column;
+    gap: 10px;
   }
 
-  .check-btn,
+  .search-btn,
   .verify-btn {
     width: 100%;
   }
-}
 
-/* 다크모드 */
-@media (prefers-color-scheme: dark) {
-  .signup-page {
-    background: #111827;
+  .search-modal {
+    margin: 10px;
+    max-height: calc(100vh - 40px);
   }
 
-  .signup-container {
-    background: #1f2937;
-    color: #e5e7eb;
+  .modal-body {
+    padding: 20px;
   }
 
-  .page-title {
-    color: #f9fafb;
-  }
-
-  .form-label {
-    color: #d1d5db;
-  }
-
-  .form-input {
-    background: #374151;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
-
-  .form-input:focus {
-    border-color: #ff6b35;
-  }
-
-  .industry-dropdown {
-    background: #374151;
-    border-color: #4b5563;
-  }
-
-  .industry-option:hover {
-    background: #4b5563;
-  }
-
-  .industry-name {
-    color: #e5e7eb;
-  }
-
-  .completion-info {
-    background: #374151;
-  }
-
-  .info-label {
-    color: #9ca3af;
-  }
-
-  .info-value {
-    color: #e5e7eb;
-  }
-
-  .back-link {
-    color: #9ca3af;
-  }
-
-  .back-link:hover {
-    color: #ff6b35;
+  .search-box {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 </style>

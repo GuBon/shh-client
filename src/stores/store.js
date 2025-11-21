@@ -15,11 +15,18 @@ export const useStoreStore = defineStore('store', () => {
     maxResults: 50 // 최대 결과 수
   })
   const currentLocation = ref({
-    latitude: 37.5665, // 기본값: 서울시청
-    longitude: 126.9780,
+    latitude: 37.57574724,
+    longitude: 126.9572089,
     address: '서울특별시 중구 세종대로 110'
   })
   const lastSearchParams = ref(null)
+  
+  // 내 매장 정보 상태 추가
+  const myStoreInfo = ref({
+    coordinates: null,
+    districtInfo: null,
+    recommendations: null
+  })
 
   // 계산된 속성
   const filteredStores = computed(() => {
@@ -91,8 +98,8 @@ export const useStoreStore = defineStore('store', () => {
         // 선택된 카테고리로 검색
         result = await kakaoPlacesService.searchMultipleCategories({
           categories: searchOptions.categories,
-          x: searchLocation.longitude,
           y: searchLocation.latitude,
+          x: searchLocation.longitude,
           radius: searchOptions.radius,
           maxResults: searchOptions.maxResults
         })
@@ -100,8 +107,8 @@ export const useStoreStore = defineStore('store', () => {
         // 기본 카테고리로 검색 (음식점, 카페, 편의점, 마트)
         result = await kakaoPlacesService.searchMultipleCategories({
           categories: ['FD6', 'CE7', 'CS2', 'MT1'],
-          x: searchLocation.longitude,
           y: searchLocation.latitude,
+          x: searchLocation.longitude,
           radius: searchOptions.radius,
           maxResults: searchOptions.maxResults
         })
@@ -130,8 +137,8 @@ export const useStoreStore = defineStore('store', () => {
       
       const result = await kakaoPlacesService.searchByKeyword({
         query: keyword,
-        x: searchLocation.longitude,
         y: searchLocation.latitude,
+        x: searchLocation.longitude,
         radius: searchFilters.value.radius,
         size: searchFilters.value.maxResults
       })
@@ -220,6 +227,43 @@ export const useStoreStore = defineStore('store', () => {
     stores.value = []
   }
 
+  // 내 매장 정보 관리 액션들
+  const setMyStoreCoordinates = (coordinates) => {
+    myStoreInfo.value.coordinates = coordinates
+    // 내 매장 위치를 현재 위치로도 설정
+    setCurrentLocation({
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      address: myStoreInfo.value.districtInfo?.district_name || '내 매장 위치'
+    })
+    console.log('📍 내 매장 좌표 설정:', coordinates)
+  }
+
+  const setMyStoreDistrictInfo = (districtInfo) => {
+    myStoreInfo.value.districtInfo = districtInfo
+    console.log('🏢 내 상권 정보 설정:', districtInfo)
+  }
+
+  const setMyStoreRecommendations = (recommendations) => {
+    myStoreInfo.value.recommendations = recommendations
+    console.log('🎯 내 추천 업종 설정:', recommendations)
+  }
+
+  const setMyStoreInfo = (info) => {
+    if (info.coordinates) setMyStoreCoordinates(info.coordinates)
+    if (info.districtInfo) setMyStoreDistrictInfo(info.districtInfo)
+    if (info.recommendations) setMyStoreRecommendations(info.recommendations)
+  }
+
+  const clearMyStoreInfo = () => {
+    myStoreInfo.value = {
+      coordinates: null,
+      districtInfo: null,
+      recommendations: null
+    }
+    console.log('🗑️ 내 매장 정보 초기화')
+  }
+
   // 초기화
   const initializeStores = async () => {
     try {
@@ -243,6 +287,7 @@ export const useStoreStore = defineStore('store', () => {
     searchFilters,
     currentLocation,
     lastSearchParams,
+    myStoreInfo,
     
     // 계산된 속성
     filteredStores,
@@ -261,6 +306,13 @@ export const useStoreStore = defineStore('store', () => {
     refreshStores,
     clearError,
     clearStores,
-    initializeStores
+    initializeStores,
+    
+    // 내 매장 정보 관리 액션
+    setMyStoreCoordinates,
+    setMyStoreDistrictInfo,
+    setMyStoreRecommendations,
+    setMyStoreInfo,
+    clearMyStoreInfo
   }
 })

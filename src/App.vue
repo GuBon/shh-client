@@ -7,10 +7,22 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useStoreStore } from './stores/store'
+import { useAuthStore } from './stores/auth'
 
 const storeStore = useStoreStore()
+const authStore = useAuthStore()
 
 onMounted(async () => {
+  // 🔥 1. 로그인 상태 복원 (최우선)
+  console.log('🔄 앱 시작 - 로그인 상태 복원 중...')
+  authStore.restoreAuthState()
+  
+  // 🔥 2. 토큰이 있으면 유효성 검증 (선택사항)
+  if (authStore.isAuthenticated) {
+    console.log('🔍 토큰 유효성 검증 중...')
+    await authStore.validateToken()
+  }
+  
   // 앱 초기화 로직
   console.log('소확행 제휴매장 찾기 앱이 시작되었습니다.')
   

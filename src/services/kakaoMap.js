@@ -233,28 +233,32 @@ class KakaoMapService {
   async geocode(address) {
     try {
       const kakao = await this.loadKakaoMapSDK()
-      
+
       if (!kakao.maps.services || !kakao.maps.services.Geocoder) {
         throw new Error('Kakao Maps Geocoder is not available')
       }
 
       return new Promise((resolve, reject) => {
         const geocoder = new kakao.maps.services.Geocoder()
-        
+
         geocoder.addressSearch(address, (result, status) => {
           if (status === kakao.maps.services.Status.OK) {
-            const coords = new kakao.maps.LatLng(result[0].y, result[0].x)
+            const x = parseFloat(result[0].x) // 경도
+            const y = parseFloat(result[0].y) // 위도
+
+            const coords = new kakao.maps.LatLng(y, x)
+
             resolve({
-              latitude: parseFloat(result[0].y),
-              longitude: parseFloat(result[0].x),
-              coords: coords
+              latitude: y,      // ✅ 위도
+              longitude: x,     // ✅ 경도
+              coords
             })
           } else {
             reject(new Error('주소를 찾을 수 없습니다'))
           }
         })
       })
-      
+
     } catch (error) {
       console.error('Geocoding failed:', error)
       throw error
