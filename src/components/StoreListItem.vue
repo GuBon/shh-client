@@ -17,7 +17,7 @@
       </div>
       <img 
         v-else
-        :src="store.main_image || '/images/store-placeholder.jpg'" 
+        :src="store.main_image || '/images/store-placeholder.jpeg'"
         :alt="store.name" 
         @error="handleImageError"
       />

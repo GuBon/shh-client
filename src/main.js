@@ -1,10 +1,12 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import App from './App.vue'
 import router from './router'
 
 // Pinia 인스턴스 생성
 const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
 
 // Vue 앱 생성
 const app = createApp(App)

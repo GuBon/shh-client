@@ -226,8 +226,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import kakaoPlacesService from '@/services/kakaoPlaces'
 import { authApi } from '@/services/api'
+import kakaoPlacesService from '@/services/kakaoPlaces' // ✅ 카카오 Places API 추가
 
 export default {
   name: 'SignUpPage',
@@ -375,8 +375,21 @@ export default {
           userIdChecked.value = false
         }
       } catch (error) {
-        console.error('아이디 확인 실패:', error)
-        userIdError.value = '아이디 확인 중 오류가 발생했습니다'
+        console.error('❌ 아이디 확인 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        })
+        
+        if (error.response?.status === 405) {
+          userIdError.value = '서버 CORS 설정 문제 - 개발자에게 문의하세요'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          userIdError.value = '서버 응답 시간 초과 - 잠시 후 다시 시도하세요'
+        } else if (error.response?.status >= 500) {
+          userIdError.value = '서버 오류 - 잠시 후 다시 시도하세요'
+        } else {
+          userIdError.value = error.response?.data?.detail || '아이디 확인 중 오류가 발생했습니다'
+        }
         userIdChecked.value = false
       }
     }
@@ -479,9 +492,23 @@ export default {
         }
 
       } catch (error) {
-        console.error('사업자 인증 실패:', error)
-        businessNumberError.value =
-            error.message || '사업자 인증에 실패했습니다. 다시 시도해주세요.'
+        console.error('❌ 사업자 인증 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        })
+        
+        if (error.response?.status === 405) {
+          businessNumberError.value = 'CORS 설정 문제 - 백엔드 설정을 확인해주세요'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          businessNumberError.value = '서버 응답 시간 초과 - 잠시 후 다시 시도하세요'
+        } else if (error.response?.status >= 500) {
+          businessNumberError.value = '서버 오류 - 잠시 후 다시 시도하세요'
+        } else {
+          businessNumberError.value = error.response?.data?.detail || 
+                                     '사업자 인증에 실패했습니다. 다시 시도해주세요.'
+        }
         businessVerified.value = false
       } finally {
         businessVerifying.value = false
@@ -508,7 +535,7 @@ export default {
       }
     }
 
-    // 매장 검색 실행
+    // 매장 검색 실행 (실제 카카오 API 사용)
     const performSearch = async () => {
       if (!searchKeyword.value.trim()) return
 
@@ -517,23 +544,40 @@ export default {
       hasSearched.value = true
 
       try {
+        console.log('🔍 카카오 API로 매장 검색 시작:', searchKeyword.value)
+        
         const response = await kakaoPlacesService.searchByKeyword({
           query: searchKeyword.value.trim(),
-          size: 15
+          size: 15, // 최대 15개 결과
+          page: 1
         })
 
+        console.log('✅ 카카오 API 검색 완료:', response.places.length, '개 결과')
+        
+        // 카카오 API 응답을 회원가입에 필요한 형식으로 변환
         searchResults.value = response.places.map(place => ({
           id: place.id,
           place_name: place.name,
           road_address_name: place.road_address,
           address_name: place.address,
-          category_group_name: place.category_name,
-          x: place.longitude.toString(),
-          y: place.latitude.toString()
+          category_group_name: place.category_name || place.category_group_name,
+          phone: place.phone,
+          place_url: place.place_url,
+          y: place.latitude.toString(),
+          x: place.longitude.toString()
         }))
+
       } catch (error) {
-        console.error('매장 검색 실패:', error)
-        searchError.value = error.message || '매장 검색 중 오류가 발생했습니다.'
+        console.error('❌ 카카오 API 매장 검색 실패:', error)
+        
+        if (error.message.includes('API 키')) {
+          searchError.value = '카카오 API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.'
+        } else if (error.message.includes('요청 한도')) {
+          searchError.value = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
+        } else {
+          searchError.value = error.message || '매장 검색 중 오류가 발생했습니다.'
+        }
+        
         searchResults.value = []
       } finally {
         isSearching.value = false
@@ -552,7 +596,7 @@ export default {
       storeSearchQuery.value = ''
     }
 
-    // 회원가입 제출
+    // 회원가입 제출 (API 명세서에 정확히 맞춤)
     const handleSignup = async () => {
       if (!canSignup.value) return
 
@@ -564,35 +608,53 @@ export default {
       isSubmitting.value = true
 
       try {
+        // 📋 API 명세서에 정확히 맞는 데이터 구조
         const signupData = {
-          userId: signupForm.value.userId,
+          login_id: signupForm.value.userId,  // ✅ login_id로 변경
           password: signupForm.value.password,
           name: signupForm.value.name,
-          businessNumber: signupForm.value.businessNumber.replace(/\D/g, ''),
-          storeName: selectedStore.value.place_name,
-          storeAddress:
-              selectedStore.value.road_address_name || selectedStore.value.address_name,
-          storeCoordinates: {
-            lat: parseFloat(selectedStore.value.y),
-            lng: parseFloat(selectedStore.value.x)
-          },
-          // ✅ 분석/추천에서 사용할 업종 (사용자가 선택한 값)
-          industryCode: signupForm.value.industryCode,
-          businessInfo: businessInfo.value
+          store_info: {  // ✅ store_info 객체로 변경
+            kakao_place_id: selectedStore.value.id,
+            store_name: selectedStore.value.place_name,
+            place_url: `https://place.map.kakao.com/${selectedStore.value.id}`,
+            phone: "02-0000-0000", // 기본값 (실제로는 사업자 정보나 사용자 입력)
+            road_address_name: selectedStore.value.road_address_name || selectedStore.value.address_name,
+            industry_name: signupForm.value.industryCode,
+            x: parseFloat(selectedStore.value.x),
+            y: parseFloat(selectedStore.value.y)
+          }
         }
 
+        console.log('🚀 회원가입 데이터 전송:', signupData)
+        
         const response = await authApi.signup(signupData)
-        console.log('회원가입 성공:', response)
+        console.log('✅ 회원가입 성공:', response)
 
-        alert('회원가입이 완료되었습니다!')
+        alert(`회원가입이 완료되었습니다!\n환영합니다, ${response.name}님!`)
         router.push('/login')
 
       } catch (error) {
-        console.error('회원가입 실패:', error)
-        const errorMessage =
-            error.response?.data?.message ||
-            error.message ||
-            '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'
+        console.error('❌ 회원가입 실패:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        })
+        
+        let errorMessage = '회원가입 중 오류가 발생했습니다.'
+        
+        if (error.response?.status === 405) {
+          errorMessage = 'CORS 문제가 발생했습니다. 백엔드 설정을 확인해주세요.'
+        } else if (error.response?.status === 400) {
+          errorMessage = error.response?.data?.detail || '입력한 정보를 다시 확인해주세요.'
+        } else if (error.response?.status >= 500) {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          errorMessage = '서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+        } else {
+          errorMessage = error.response?.data?.detail || error.message || errorMessage
+        }
+        
         alert(errorMessage)
       } finally {
         isSubmitting.value = false

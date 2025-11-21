@@ -20,7 +20,7 @@
           <div class="store-images-section">
             <div class="main-image-container">
               <img 
-                :src="store.mainImage || '/images/store-placeholder.jpg'" 
+                :src="store.mainImage || '/images/store-placeholder.jpeg'"
                 :alt="store.name"
                 class="main-image"
                 @error="handleImageError"

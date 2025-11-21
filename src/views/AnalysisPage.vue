@@ -289,15 +289,21 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import GlobalHeader from '../components/GlobalHeader.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // 로그인한 사용자의 클러스터 유형 확인 및 리다이렉트
 const checkUserClusterAndRedirect = () => {
+  // "전체 분석 보기" 쿼리 파라미터가 있으면 리다이렉트하지 않음
+  if (route.query.showAll === 'true') {
+    return
+  }
+
   if (authStore.isAuthenticated && authStore.user) {
     // 예시: 사용자가 블루 유형이라면 (실제로는 사용자 데이터에서 가져와야 함)
     const userClusterType = authStore.user.clusterType || 'blue' // 기본값을 blue로 설정
@@ -346,7 +352,7 @@ const clusterInfo = [
 
 // Flourish embed 관련 함수
 const loadFlourishScript = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     // 이미 로드된 경우
     if (window.flourish) {
       resolve()
@@ -356,8 +362,7 @@ const loadFlourishScript = () => {
     // 스크립트가 이미 존재하는지 확인
     const existingScript = document.querySelector('script[src*="flourish.studio"]')
     if (existingScript) {
-      existingScript.addEventListener('load', resolve)
-      existingScript.addEventListener('error', reject)
+      resolve()
       return
     }
     
@@ -365,42 +370,30 @@ const loadFlourishScript = () => {
     const script = document.createElement('script')
     script.src = 'https://public.flourish.studio/resources/embed.js'
     script.async = true
-    
-    script.onload = () => {
-      console.log('Flourish script loaded successfully')
-      resolve()
-    }
-    
-    script.onerror = (error) => {
-      console.error('Failed to load Flourish script:', error)
-      reject(error)
-    }
-    
-    // head에 스크립트 추가
+    script.onload = resolve
+    script.onerror = resolve // 에러가 있어도 계속 진행
     document.head.appendChild(script)
   })
 }
 
 const initializeFlourishChart = async () => {
   try {
+    console.log('Flourish 초기화 시작')
+    
     await loadFlourishScript()
     
-    // 잠시 대기 후 Flourish 초기화
+    // 간단한 타이밍으로 처리
     setTimeout(() => {
       if (window.flourish && window.flourish.embed) {
-        // Flourish embed 초기화
         window.flourish.embed()
-        flourishLoaded.value = true
-        console.log('Flourish chart initialized')
-      } else {
-        console.warn('Flourish embed function not available')
-        flourishLoaded.value = true // 로딩 상태는 해제
+        console.log('Flourish 초기화 완료')
       }
-    }, 500)
+      flourishLoaded.value = true
+    }, 300)
     
   } catch (error) {
-    console.error('Failed to initialize Flourish chart:', error)
-    flourishLoaded.value = true // 에러가 있어도 로딩 상태 해제
+    console.error('Flourish 초기화 실패:', error)
+    flourishLoaded.value = true
   }
 }
 

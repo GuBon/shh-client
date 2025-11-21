@@ -260,7 +260,18 @@ const getCurrentLocation = async () => {
 }
 
 // 내 가게 위치로 이동
-const goToMyStore = () => {
+const goToMyStore = async () => {
+  // 📍 Store에서 내 매장 좌표 가져오기
+  const myStoreCoordinates = storeStore.myStoreInfo.coordinates
+  
+  if (myStoreCoordinates) {
+    console.log('🏬 내 매장 위치로 이동:', myStoreCoordinates)
+    await moveToLocation(myStoreCoordinates)
+  } else {
+    console.warn('⚠️ 내 매장 좌표 정보가 없습니다.')
+    alert('내 매장 위치 정보를 불러올 수 없습니다.')
+  }
+  
   emit('go-to-my-store')
 }
 

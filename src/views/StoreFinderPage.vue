@@ -146,14 +146,21 @@ const handleMapReady = (map) => {
 }
 
 const handleGoToMyStore = () => {
-  if (authStore.isLoggedIn && authStore.hasMyStore) {
-    const myStoreLocation = authStore.getMyStoreLocation()
-    storeStore.setCurrentLocation(myStoreLocation)
-    console.log('내 가게 위치로 이동:', myStoreLocation)
-  } else {
+  // 📍 Store에서 내 매장 좌표 확인
+  const myStoreCoordinates = storeStore.myStoreInfo.coordinates
+  
+  if (authStore.isLoggedIn && myStoreCoordinates) {
+    console.log('🏬 내 매장 위치로 이동:', myStoreCoordinates)
+    storeStore.setCurrentLocation(myStoreCoordinates)
+    // 내 매장 위치에서 매장 검색
+    storeStore.searchStores()
+  } else if (!authStore.isLoggedIn) {
     // 로그인하지 않은 경우 로그인 유도
     alert('내 가게 위치를 보려면 로그인이 필요합니다.')
     router.push('/login')
+  } else {
+    // 로그인했지만 매장 정보가 없는 경우
+    alert('내 매장 위치 정보를 불러올 수 없습니다.')
   }
 }
 
@@ -178,16 +185,17 @@ const initialSearch = async () => {
     isInitialLoading.value = true
     
     // 로그인 상태에 따른 초기 위치 설정
-    if (authStore.isLoggedIn && authStore.hasMyStore) {
+    const myStoreCoordinates = storeStore.myStoreInfo.coordinates
+    
+    if (authStore.isLoggedIn && myStoreCoordinates) {
       // 로그인한 사용자: 내 가게 위치를 중심으로 설정
-      const myStoreLocation = authStore.getMyStoreLocation()
-      storeStore.setCurrentLocation(myStoreLocation)
-      console.log('✅ 로그인 사용자: 내 가게 위치로 설정', myStoreLocation)
+      storeStore.setCurrentLocation(myStoreCoordinates)
+      console.log('✅ 로그인 사용자: 내 가게 위치로 설정', myStoreCoordinates)
     } else {
-      // 비로그인 사용자: 현재 위치 가져오기 시도
+      // 비로그인 사용자 또는 매장 정보 없는 경우: 현재 위치 가져오기 시도
       try {
         await storeStore.getCurrentLocation()
-        console.log('✅ 비로그인 사용자: 현재 위치로 설정')
+        console.log('✅ 현재 위치로 설정')
       } catch (error) {
         console.log('📍 위치 권한 없음: 기본 위치(서울시청) 사용')
         // 기본 위치는 store에서 이미 설정되어 있음

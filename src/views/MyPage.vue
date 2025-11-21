@@ -234,15 +234,13 @@ const imagesInput = ref(null)
 
 // 매장 정보
 const storeInfo = reactive({
-  name: '구본경의 카페',
-  description: '신선한 원두로 내린 커피와 수제 디저트를 즐길 수 있는 아늑한 공간입니다. 조용한 분위기에서 독서나 업무를 하기에 좋습니다.',
-  phone: '02-1234-5678',
-  address: '서울특별시 중구 명동길 26',
+  name: '영천생고기',
+  description: '',
+  phone: '02-722-9291',
+  address: '서울특별시 종로구 통일로14길 10',
   mainImage: '/images/store-main.jpg',
   images: [
-    '/images/store-1.jpg',
-    '/images/store-2.jpg', 
-    '/images/store-3.jpg'
+
   ],
   operatingHours: {
     weekday: {

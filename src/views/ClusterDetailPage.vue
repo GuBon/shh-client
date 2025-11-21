@@ -18,7 +18,7 @@
               <div class="cluster-color" :style="{ backgroundColor: clusterConfig.color }"></div>
               <span class="cluster-type">{{ clusterConfig.name }}</span>
             </div>
-            <button @click="$router.push('/analysis')" class="view-all-btn">
+            <button @click="$router.push('/analysis?showAll=true')" class="view-all-btn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
               </svg>
@@ -122,7 +122,7 @@
                   ref="flourishContainer"
                   class="flourish-embed flourish-scatter"
                   :data-src="currentFlourishSrc"
-                  :key="currentFlourishSrc">   <!-- 상권 유형 바뀔 때 강제 리렌더 -->
+                  :key="currentFlourishSrc">
 
               <div v-if="!flourishLoaded" class="flourish-loading">
                 <div class="loading-spinner"></div>
@@ -391,7 +391,7 @@ const currentFlourishSrc = computed(() => {
 
 // Flourish embed 스크립트 로드
 const loadFlourishScript = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     // 이미 로드되어 있으면 패스
     if (window.flourish) {
       resolve()
@@ -400,16 +400,15 @@ const loadFlourishScript = () => {
 
     const existingScript = document.querySelector('script[src*="flourish.studio"]')
     if (existingScript) {
-      existingScript.addEventListener('load', resolve)
-      existingScript.addEventListener('error', reject)
+      resolve()
       return
     }
 
     const script = document.createElement('script')
     script.src = 'https://public.flourish.studio/resources/embed.js'
     script.async = true
-    script.onload = () => resolve()
-    script.onerror = (error) => reject(error)
+    script.onload = resolve
+    script.onerror = resolve // 에러가 있어도 계속 진행
     document.head.appendChild(script)
   })
 }
@@ -417,16 +416,21 @@ const loadFlourishScript = () => {
 // Flourish 차트 초기화
 const initializeFlourishChart = async () => {
   try {
+    console.log('Flourish 초기화 시작 (클러스터:', clusterId.value, ')')
+    
     await loadFlourishScript()
-    // DOM 업데이트 반영 후 embed 호출을 위해 약간의 딜레이
+    
+    // 간단한 타이밍으로 처리
     setTimeout(() => {
       if (window.flourish && window.flourish.embed) {
         window.flourish.embed()
+        console.log('Flourish 초기화 완료')
       }
       flourishLoaded.value = true
     }, 300)
-  } catch (e) {
-    console.error('Flourish init error:', e)
+    
+  } catch (error) {
+    console.error('Flourish 초기화 실패:', error)
     flourishLoaded.value = true
   }
 }
@@ -603,6 +607,7 @@ onUnmounted(() => {
 watch(
     () => clusterId.value,
     async () => {
+      console.log('클러스터 변경 감지, 차트 재초기화')
       flourishLoaded.value = false
       await initializeFlourishChart()
     }
